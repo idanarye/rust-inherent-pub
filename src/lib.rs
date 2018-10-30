@@ -3,22 +3,106 @@ extern crate syn;
 extern crate quote;
 
 use proc_macro::{TokenStream};
-use syn::{parse_macro_input, ItemImpl, ImplItem, Visibility};
-use quote::ToTokens;
+use syn::{
+    parse_macro_input,
+    ItemImpl,
+    ImplItem,
+    Visibility,
+    MethodSig,
+    Path,
+    FnArg,
+    Pat,
+    PatIdent,
+    Ident,
+    ImplItemVerbatim,
+};
+use syn::spanned::Spanned;
+use syn::parse::Error;
+use quote::{quote, ToTokens};
 
 #[proc_macro_attribute]
 pub fn inherent_pub(_args: TokenStream, input: TokenStream) -> TokenStream {
-    let mut input: ItemImpl = parse_macro_input!(input as ItemImpl);
+    let input: ItemImpl = parse_macro_input!(input as ItemImpl);
 
-    extract_pub_methods(&mut input.items);
-
-    input.into_token_stream().into()
-}
-
-fn extract_pub_methods(items: &mut Vec<ImplItem>) {
-    for mut item in items.iter_mut() {
-        if let ImplItem::Method(method) = item {
-            method.vis = Visibility::Inherited;
+    match inherent_pub_impl(input) {
+        Ok(output) => {
+            output
+        },
+        Err(error) => {
+            error.to_compile_error().into()
         }
     }
+}
+
+fn inherent_pub_impl(mut input: ItemImpl) -> Result<TokenStream, Error> {
+    let (_, trait_, _) = input.trait_.clone().ok_or_else(|| {
+        Error::new(input.span(), "expected `impl <Trait> for <Type>`")
+    }).unwrap();
+
+    let methods = extract_pub_methods(&mut input.items);
+
+    let mut result = TokenStream::new().into();
+    input.to_tokens(&mut result);
+
+    let pub_impls = methods.into_iter().map(|(vis, sig)| {
+        redirect_method(vis, sig, &trait_)
+    }).collect::<Result<Vec<_>, Error>>()?;
+
+    let inherent_impl = ItemImpl {
+        trait_: None,
+        items: pub_impls,
+        ..input
+    };
+    inherent_impl.to_tokens(&mut result);
+
+    Ok(result.into())
+}
+
+fn extract_pub_methods(items: &mut Vec<ImplItem>) -> Vec<(Visibility, MethodSig)> {
+    items.iter_mut().filter_map(|item| {
+        if let ImplItem::Method(method) = item {
+            let vis = method.vis.clone();
+            let sig = method.sig.clone();
+            method.vis = Visibility::Inherited;
+            Some((vis, sig))
+        } else {
+            None
+        }
+    }).collect()
+}
+
+fn redirect_method(vis: Visibility, mut sig: MethodSig, trait_: &Path) -> Result<ImplItem, Error>  {
+    let mut arg_count: usize = 0;
+    let mut args = Vec::new();
+    for arg in sig.decl.inputs.iter_mut() {
+        match arg {
+            FnArg::SelfRef(_) | FnArg::SelfValue(_) => {
+                let ident = Ident::new("self", arg.span());
+                args.push(ident);
+            },
+            FnArg::Captured(arg) => {
+                arg_count += 1;
+                let ident = Ident::new(&format!("arg{}", arg_count), arg.span());
+                arg.pat = Pat::Ident(PatIdent {
+                    by_ref: None,
+                    mutability: None,
+                    ident: ident.clone(),
+                    subpat: None,
+                });
+                args.push(ident);
+            },
+            FnArg::Inferred(_) => {
+                return Err(Error::new(arg.span(), "inherent_pub does not know how to handle inferred arguments"))
+            },
+            FnArg::Ignored(_) => {
+                return Err(Error::new(arg.span(), "inherent_pub does not know how to handle ignored arguments"))
+            },
+        }
+    }
+    let fn_name = &sig.ident;
+    Ok(ImplItem::Verbatim(ImplItemVerbatim { tts: quote!(
+        #vis #sig {
+            <Self as #trait_>::#fn_name(#(#args),*)
+        }
+    )}))
 }
