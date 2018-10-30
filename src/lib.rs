@@ -15,6 +15,7 @@ use syn::{
     PatIdent,
     Ident,
     ImplItemVerbatim,
+    ArgCaptured,
 };
 use syn::spanned::Spanned;
 use syn::parse::Error;
@@ -71,13 +72,23 @@ fn extract_pub_methods(items: &mut Vec<ImplItem>) -> Vec<(Visibility, MethodSig)
     }).collect()
 }
 
-fn redirect_method(vis: Visibility, mut sig: MethodSig, trait_: &Path) -> Result<ImplItem, Error>  {
+fn redirect_method(vis: Visibility, mut sig: MethodSig, trait_: &Path) -> Result<ImplItem, Error> {
     let mut arg_count: usize = 0;
     let mut args = Vec::new();
     for arg in sig.decl.inputs.iter_mut() {
         match arg {
-            FnArg::SelfRef(_) | FnArg::SelfValue(_) => {
+            FnArg::SelfRef(arg) => {
                 let ident = Ident::new("self", arg.span());
+                args.push(ident);
+            },
+            FnArg::SelfValue(arg) => {
+                arg.mutability = None;
+                let ident = Ident::new("self", arg.span());
+                args.push(ident);
+            },
+            FnArg::Captured(ArgCaptured { pat: Pat::Ident(pat_ident), .. }) if args.is_empty() && pat_ident.ident.to_string() == "self" => {
+                pat_ident.mutability = None;
+                let ident = Ident::new("self", pat_ident.span());
                 args.push(ident);
             },
             FnArg::Captured(arg) => {
