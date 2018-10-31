@@ -25,18 +25,13 @@ use quote::{quote, ToTokens};
 /// inherited methods, which can be used without having to import the trait.
 ///
 /// ```
-/// extern crate inherent_pub;
-///
-/// mod foo {
+/// # extern crate inherent_pub;
+/// mod module {
+///     # use inherent_pub::inherent_pub;
 ///     pub trait Foo {
 ///         fn foo(self);
 ///         fn bar(self);
 ///     }
-/// }
-///
-/// mod bar {
-///     use inherent_pub::inherent_pub;
-///     use foo::Foo;
 ///
 ///     pub struct Bar;
 ///
@@ -51,15 +46,15 @@ use quote::{quote, ToTokens};
 ///
 /// fn main() {
 ///     // We didn't `use foo:Foo`, but we can still use `Bar.foo()`:
-///     bar::Bar.foo();
+///     module::Bar.foo();
 ///
 ///     // This does not compile:
 ///     // bar::Bar.bar();
 ///
 ///     {
 ///         // We need to import the trait in order to use `Bar.bar()`:
-///         use foo::Foo;
-///         bar::Bar.bar();
+///         use module::Foo;
+///         module::Bar.bar();
 ///     }
 /// }
 /// ```

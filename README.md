@@ -31,7 +31,7 @@ fn main() {
 }
 ```
 
-With #[inherent_pub]`, we can make it so `length()` can be used without
+With `#[inherent_pub]`, we can make it so `length()` can be used without
 importing the `Length` trait - just annotated the `impl` block and mark the
 method as `pub`:
 

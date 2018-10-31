@@ -1,14 +1,16 @@
 [package]
 name = "inherent-pub"
+description = "Mark methods in `impl Trait for Type` blocks inherent to the type"
 version = "0.1.0"
 authors = ["IdanArye <idanarye@gmail.com>"]
 license = "MIT"
 documentation = "https://idanarye.github.io/rust-inherent-pub/"
 readme = "README.md"
+keywords = ["inherent"]
 
 [lib]
 proc-macro = true
 
 [dependencies]
-syn = {version = "0.15.15", features = ["full", "extra-traits"]}
+syn = {version = "0.15.15", features = ["full"]}
 quote = "0.6.9"
