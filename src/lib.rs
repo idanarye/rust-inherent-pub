@@ -21,6 +21,48 @@ use syn::spanned::Spanned;
 use syn::parse::Error;
 use quote::{quote, ToTokens};
 
+/// Make `pub` methods in the annotated `impl Trait for Type` block into
+/// inherited methods, which can be used without having to import the trait.
+///
+/// ```
+/// extern crate inherent_pub;
+///
+/// mod foo {
+///     pub trait Foo {
+///         fn foo(self);
+///         fn bar(self);
+///     }
+/// }
+///
+/// mod bar {
+///     use inherent_pub::inherent_pub;
+///     use foo::Foo;
+///
+///     pub struct Bar;
+///
+///     #[inherent_pub]
+///     impl Foo for Bar {
+///         // `foo` becomes an inherent method.
+///         pub fn foo(self) {}
+///         // `bar` is not an inherent method (not `pub`)
+///         fn bar(self) {}
+///     }
+/// }
+///
+/// fn main() {
+///     // We didn't `use foo:Foo`, but we can still use `Bar.foo()`:
+///     bar::Bar.foo();
+///
+///     // This does not compile:
+///     // bar::Bar.bar();
+///
+///     {
+///         // We need to import the trait in order to use `Bar.bar()`:
+///         use foo::Foo;
+///         bar::Bar.bar();
+///     }
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn inherent_pub(_args: TokenStream, input: TokenStream) -> TokenStream {
     let input: ItemImpl = parse_macro_input!(input as ItemImpl);
@@ -112,6 +154,7 @@ fn redirect_method(vis: Visibility, mut sig: MethodSig, trait_: &Path) -> Result
     }
     let fn_name = &sig.ident;
     Ok(ImplItem::Verbatim(ImplItemVerbatim { tts: quote!(
+        #[doc(hidden)]
         #vis #sig {
             <Self as #trait_>::#fn_name(#(#args),*)
         }
