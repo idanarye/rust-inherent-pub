@@ -150,6 +150,7 @@ fn redirect_method(vis: Visibility, mut sig: MethodSig, trait_: &Path) -> Result
     let fn_name = &sig.ident;
     Ok(ImplItem::Verbatim(ImplItemVerbatim { tts: quote!(
         #[doc(hidden)]
+        #[inline(always)]
         #vis #sig {
             <Self as #trait_>::#fn_name(#(#args),*)
         }
