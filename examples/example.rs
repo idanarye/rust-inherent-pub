@@ -1,25 +1,23 @@
 extern crate inherent_pub;
 
-mod foo {
-    pub trait Foo {
-        fn foo(self, x: i32, y: &str, z: (f32, u64));
-    }
-}
-
-mod bar {
+mod geometry {
     use inherent_pub::inherent_pub;
-    use foo::Foo;
 
-    pub struct Bar;
+    pub trait Length {
+        fn length(&self) -> f64;
+    }
+
+    pub struct Vector(pub f64, pub f64);
 
     #[inherent_pub]
-    impl Foo for Bar {
-        pub fn foo(self, x: i32, y: &str, (z1, z2): (f32, u64)) {
-            println!("Hello World {} {} {} {}", x, y, z1, z2);
+    impl Length for Vector {
+        pub fn length(&self) -> f64 {
+            let Vector(x, y) = self;
+            (x.powi(2) + y.powi(2)).sqrt()
         }
     }
 }
 
 fn main() {
-    bar::Bar.foo(1, "2", (3.4, 5));
+    assert!(geometry::Vector(3.0, 4.0).length() == 5.0);
 }
