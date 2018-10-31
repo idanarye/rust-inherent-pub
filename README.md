@@ -26,7 +26,7 @@ mod geometry {
 }
 
 fn main() {
-	// Compilation error: we did not `use geometry::Length` so we can't access `length()`
+    // Compilation error: we did not `use geometry::Length` so we can't access `length()`
     assert!(geometry::Vector(3.0, 4.0).length() == 5.0);
 }
 ```
