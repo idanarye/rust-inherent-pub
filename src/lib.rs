@@ -82,6 +82,7 @@ fn inherent_pub_impl(mut input: ItemImpl) -> Result<TokenStream, Error> {
     }).collect::<Result<Vec<_>, Error>>()?;
 
     let inherent_impl = ItemImpl {
+        attrs: Vec::new(), // attributes that work on the trait impl are not usually designed to work on the regular impl
         trait_: None,
         items: pub_impls,
         ..input
@@ -138,12 +139,13 @@ fn redirect_method(vis: Visibility, mut sig: Signature, trait_: &Path) -> Result
             },
         }
     }
+    let await_ = sig.asyncness.map(|_| Some(quote!(.await)));
     let fn_name = &sig.ident;
     Ok(ImplItem::Verbatim(quote!(
         #[doc(hidden)]
         #[inline(always)]
         #vis #sig {
-            <Self as #trait_>::#fn_name(#(#args),*)
+            <Self as #trait_>::#fn_name(#(#args),*) #await_
         }
     )))
 }
