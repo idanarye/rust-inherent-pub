@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## 0.2.1 - 2020-01-18
+
 ### Fixed
 - Upgrade `syn` and `quote` versions to support newer syntax.
 - Make `async` methods work. Rust does not support `async` methods in traits

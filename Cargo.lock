@@ -147,7 +147,7 @@ dependencies = [
 
 [[package]]
 name = "inherent-pub"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-std 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "async-trait 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
