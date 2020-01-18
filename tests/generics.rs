@@ -1,5 +1,3 @@
-extern crate inherent_pub;
-
 #[test]
 fn generic_struct() {
     mod my_module {

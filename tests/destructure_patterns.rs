@@ -1,5 +1,3 @@
-extern crate inherent_pub;
-
 #[test]
 fn tuple_destructure() {
     mod my_module {

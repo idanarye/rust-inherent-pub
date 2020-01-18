@@ -1,5 +1,3 @@
-extern crate inherent_pub;
-
 #[test]
 fn no_self() {
     mod my_module {
@@ -135,4 +133,27 @@ fn box_self() {
     }
 
     assert!(Box::new(my_module::Bar(42)).foo() == 42);
+}
+
+#[test]
+fn box_self_mut() {
+    mod my_module {
+        use inherent_pub::inherent_pub;
+
+        pub trait Foo {
+            fn foo(self: Box<Self>) -> i32;
+        }
+
+        pub struct Bar(pub i32);
+
+        #[inherent_pub]
+        impl Foo for Bar {
+            pub fn foo(mut self: Box<Self>) -> i32 {
+                self.0 += 1;
+                self.0
+            }
+        }
+    }
+
+    assert!(Box::new(my_module::Bar(42)).foo() == 43);
 }

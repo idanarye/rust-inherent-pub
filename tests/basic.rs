@@ -1,5 +1,3 @@
-extern crate inherent_pub;
-
 #[test]
 fn it_works() {
     mod my_module {

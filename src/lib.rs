@@ -1,6 +1,4 @@
 extern crate proc_macro;
-extern crate syn;
-extern crate quote;
 
 use proc_macro::{TokenStream};
 use syn::{
@@ -8,14 +6,12 @@ use syn::{
     ItemImpl,
     ImplItem,
     Visibility,
-    MethodSig,
+    Signature,
     Path,
     FnArg,
     Pat,
     PatIdent,
     Ident,
-    ImplItemVerbatim,
-    ArgCaptured,
 };
 use syn::spanned::Spanned;
 use syn::parse::Error;
@@ -25,7 +21,6 @@ use quote::{quote, ToTokens};
 /// inherited methods, which can be used without having to import the trait.
 ///
 /// ```
-/// # extern crate inherent_pub;
 /// mod module {
 ///     # use inherent_pub::inherent_pub;
 ///     pub trait Foo {
@@ -96,7 +91,7 @@ fn inherent_pub_impl(mut input: ItemImpl) -> Result<TokenStream, Error> {
     Ok(result.into())
 }
 
-fn extract_pub_methods(items: &mut Vec<ImplItem>) -> Vec<(Visibility, MethodSig)> {
+fn extract_pub_methods(items: &mut Vec<ImplItem>) -> Vec<(Visibility, Signature)> {
     items.iter_mut().filter_map(|item| {
         if let ImplItem::Method(method) = item {
             let vis = method.vis.clone();
@@ -109,50 +104,46 @@ fn extract_pub_methods(items: &mut Vec<ImplItem>) -> Vec<(Visibility, MethodSig)
     }).collect()
 }
 
-fn redirect_method(vis: Visibility, mut sig: MethodSig, trait_: &Path) -> Result<ImplItem, Error> {
+fn redirect_method(vis: Visibility, mut sig: Signature, trait_: &Path) -> Result<ImplItem, Error> {
     let mut arg_count: usize = 0;
     let mut args = Vec::new();
-    for arg in sig.decl.inputs.iter_mut() {
+    for arg in sig.inputs.iter_mut() {
         match arg {
-            FnArg::SelfRef(arg) => {
+            FnArg::Receiver(arg) => {
+                if arg.reference.is_none() {
+                    arg.mutability = None;
+                }
                 let ident = Ident::new("self", arg.span());
                 args.push(ident);
             },
-            FnArg::SelfValue(arg) => {
-                arg.mutability = None;
-                let ident = Ident::new("self", arg.span());
-                args.push(ident);
-            },
-            FnArg::Captured(ArgCaptured { pat: Pat::Ident(pat_ident), .. }) if args.is_empty() && pat_ident.ident.to_string() == "self" => {
-                pat_ident.mutability = None;
-                let ident = Ident::new("self", pat_ident.span());
-                args.push(ident);
-            },
-            FnArg::Captured(arg) => {
-                arg_count += 1;
-                let ident = Ident::new(&format!("arg{}", arg_count), arg.span());
-                arg.pat = Pat::Ident(PatIdent {
-                    by_ref: None,
-                    mutability: None,
-                    ident: ident.clone(),
-                    subpat: None,
-                });
-                args.push(ident);
-            },
-            FnArg::Inferred(_) => {
-                return Err(Error::new(arg.span(), "inherent_pub does not know how to handle inferred arguments"))
-            },
-            FnArg::Ignored(_) => {
-                return Err(Error::new(arg.span(), "inherent_pub does not know how to handle ignored arguments"))
+            FnArg::Typed(arg) => {
+                match *arg.pat {
+                    Pat::Ident(ref mut pat_ident) if pat_ident.ident == "self" => {
+                        pat_ident.mutability = None;
+                        args.push(pat_ident.ident.clone());
+                    },
+                    _ => {
+                        arg_count += 1;
+                        let ident = Ident::new(&format!("arg{}", arg_count), arg.span());
+                        arg.pat = Box::new(Pat::Ident(PatIdent {
+                            attrs: Vec::new(),
+                            by_ref: None,
+                            mutability: None,
+                            ident: ident.clone(),
+                            subpat: None,
+                        }));
+                        args.push(ident);
+                    },
+                }
             },
         }
     }
     let fn_name = &sig.ident;
-    Ok(ImplItem::Verbatim(ImplItemVerbatim { tts: quote!(
+    Ok(ImplItem::Verbatim(quote!(
         #[doc(hidden)]
         #[inline(always)]
         #vis #sig {
             <Self as #trait_>::#fn_name(#(#args),*)
         }
-    )}))
+    )))
 }

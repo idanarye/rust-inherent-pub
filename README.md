@@ -44,8 +44,6 @@ importing the `Length` trait - just annotated the `impl` block and mark the
 method as `pub`:
 
 ```rust
-extern crate inherent_pub;
-
 mod geometry {
     use inherent_pub::inherent_pub;
 

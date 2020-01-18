@@ -1,5 +1,3 @@
-extern crate inherent_pub;
-
 mod geometry {
     use inherent_pub::inherent_pub;
 
